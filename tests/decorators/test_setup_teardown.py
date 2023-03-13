@@ -17,7 +17,7 @@
 # under the License.
 from __future__ import annotations
 
-from airflow.decorators import setup, task, teardown
+from airflow.decorators import setup, task, task_group, teardown
 
 
 class TestSetupTearDownTask:
@@ -28,11 +28,10 @@ class TestSetupTearDownTask:
 
         with dag_maker() as dag:
             mytask()
-        setup_task = dag.task_group.setup_children["mytask"]
+
+        assert len(dag.task_group.children) == 1
+        setup_task = dag.task_group.children["mytask"]
         assert setup_task._is_setup
-        assert len(dag.task_group.setup_children) == 1
-        assert len(dag.task_group.children) == 0
-        assert len(dag.task_group.teardown_children) == 0
 
     def test_marking_functions_as_teardown_task(self, dag_maker):
         @teardown
@@ -42,11 +41,9 @@ class TestSetupTearDownTask:
         with dag_maker() as dag:
             mytask()
 
-        teardown_task = dag.task_group.teardown_children["mytask"]
+        assert len(dag.task_group.children) == 1
+        teardown_task = dag.task_group.children["mytask"]
         assert teardown_task._is_teardown
-        assert len(dag.task_group.setup_children) == 0
-        assert len(dag.task_group.children) == 0
-        assert len(dag.task_group.teardown_children) == 1
 
     def test_marking_decorated_functions_as_setup_task(self, dag_maker):
         @setup
@@ -57,11 +54,9 @@ class TestSetupTearDownTask:
         with dag_maker() as dag:
             mytask()
 
-        setup_task = dag.task_group.setup_children["mytask"]
+        assert len(dag.task_group.children) == 1
+        setup_task = dag.task_group.children["mytask"]
         assert setup_task._is_setup
-        assert len(dag.task_group.setup_children) == 1
-        assert len(dag.task_group.children) == 0
-        assert len(dag.task_group.teardown_children) == 0
 
     def test_marking_operator_as_setup_task(self, dag_maker):
         from airflow.operators.bash import BashOperator
@@ -69,11 +64,9 @@ class TestSetupTearDownTask:
         with dag_maker() as dag:
             BashOperator.as_setup(task_id="mytask", bash_command='echo "I am a setup task"')
 
-        setup_task = dag.task_group.setup_children["mytask"]
+        assert len(dag.task_group.children) == 1
+        setup_task = dag.task_group.children["mytask"]
         assert setup_task._is_setup
-        assert len(dag.task_group.setup_children) == 1
-        assert len(dag.task_group.children) == 0
-        assert len(dag.task_group.teardown_children) == 0
 
     def test_marking_decorated_functions_as_teardown_task(self, dag_maker):
         @teardown
@@ -84,11 +77,9 @@ class TestSetupTearDownTask:
         with dag_maker() as dag:
             mytask()
 
-        teardown_task = dag.task_group.teardown_children["mytask"]
+        assert len(dag.task_group.children) == 1
+        teardown_task = dag.task_group.children["mytask"]
         assert teardown_task._is_teardown
-        assert len(dag.task_group.setup_children) == 0
-        assert len(dag.task_group.children) == 0
-        assert len(dag.task_group.teardown_children) == 1
 
     def test_marking_operator_as_teardown_task(self, dag_maker):
         from airflow.operators.bash import BashOperator
@@ -96,8 +87,44 @@ class TestSetupTearDownTask:
         with dag_maker() as dag:
             BashOperator.as_teardown(task_id="mytask", bash_command='echo "I am a setup task"')
 
-        teardown_task = dag.task_group.teardown_children["mytask"]
+        assert len(dag.task_group.children) == 1
+        teardown_task = dag.task_group.children["mytask"]
         assert teardown_task._is_teardown
-        assert len(dag.task_group.setup_children) == 0
-        assert len(dag.task_group.children) == 0
-        assert len(dag.task_group.teardown_children) == 1
+
+    def test_setup_taskgroup(self, dag_maker):
+        @setup
+        @task_group
+        def mygroup():
+            @task
+            def mytask():
+                print("I am a setup task")
+
+            mytask()
+
+        with dag_maker() as dag:
+            mygroup()
+
+        assert len(dag.task_group.children) == 1
+        setup_task_group = dag.task_group.children["mygroup"]
+        assert len(setup_task_group.children) == 1
+        setup_task = setup_task_group.children["mygroup.mytask"]
+        assert setup_task._is_setup
+
+    def test_teardown_taskgroup(self, dag_maker):
+        @teardown
+        @task_group
+        def mygroup():
+            @task
+            def mytask():
+                print("I am a teardown task")
+
+            mytask()
+
+        with dag_maker() as dag:
+            mygroup()
+
+        assert len(dag.task_group.children) == 1
+        teardown_task_group = dag.task_group.children["mygroup"]
+        assert len(teardown_task_group.children) == 1
+        teardown_task = teardown_task_group.children["mygroup.mytask"]
+        assert teardown_task._is_teardown
