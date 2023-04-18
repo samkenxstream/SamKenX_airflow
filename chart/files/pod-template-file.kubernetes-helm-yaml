@@ -73,7 +73,7 @@ spec:
           {{- toYaml .Values.volumeMounts | nindent 8 }}
         {{- end }}
         {{- if .Values.workers.extraVolumeMounts }}
-          {{- toYaml .Values.workers.extraVolumeMounts | nindent 8 }}
+          {{- tpl (toYaml .Values.workers.extraVolumeMounts) . | nindent 8 }}
         {{- end }}
     {{- if .Values.workers.extraContainers }}
       {{- toYaml .Values.workers.extraContainers | nindent 4 }}
@@ -86,7 +86,7 @@ spec:
   hostAliases: {{- toYaml .Values.workers.hostAliases | nindent 4 }}
   {{- end }}
   restartPolicy: Never
-  securityContext: {{- $securityContext | nindent 4 }}
+  securityContext: {{ $securityContext | nindent 4 }}
   nodeSelector: {{- toYaml $nodeSelector | nindent 4 }}
   affinity: {{- toYaml $affinity | nindent 4 }}
   tolerations: {{- toYaml $tolerations | nindent 4 }}
@@ -119,5 +119,5 @@ spec:
     {{- toYaml .Values.volumes | nindent 2 }}
   {{- end }}
   {{- if .Values.workers.extraVolumes }}
-    {{- toYaml .Values.workers.extraVolumes | nindent 2 }}
+    {{- tpl (toYaml .Values.workers.extraVolumes) . | nindent 2 }}
   {{- end }}
