@@ -1333,7 +1333,7 @@ jobs:
           persist-credentials: false
           submodules: recursive
       - name: "Download all artifacts from the current build"
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           path: ./artifacts
       - name: "Summarize all warnings"
